@@ -1,0 +1,21 @@
+{
+  "name": "db-diff-monitor",
+  "version": "1.0.0",
+  "description": "Database difference monitoring tool for ERP system",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mssql": "^9.1.1",
+    "deep-diff": "^1.0.2",
+    "dotenv": "^16.0.3",
+    "ejs": "^3.1.9",
+    "socket.io": "^4.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

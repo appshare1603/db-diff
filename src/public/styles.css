@@ -1,0 +1,36 @@
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.differences {
+    margin-top: 20px;
+}
+
+.schema-changes, .data-changes {
+    margin-top: 15px;
+}
+
+.change-item {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.change-item.modified {
+    background-color: #fff3cd;
+}
+
+.change-item.added {
+    background-color: #d4edda;
+}
+
+.change-item.removed {
+    background-color: #f8d7da;
+}
+
+.change-details {
+    margin-top: 5px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
