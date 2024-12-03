@@ -5,6 +5,7 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { compareSnapshots } = require('./services/dbCompare');
 const { takeSnapshot, testConnection, getTables } = require('./services/dbSnapshot');
+const { initStorage, saveSnapshot, loadSnapshots, deleteSnapshot } = require('./services/storageService');
 
 const app = express();
 const httpServer = createServer(app);
@@ -18,20 +19,21 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-    console.log('Client connected');
-    socket.on('disconnect', () => {
-        console.log('Client disconnected');
-    });
-});
+// Initialize storage on startup
+initStorage().catch(console.error);
 
 // Routes
-app.get('/', (req, res) => {
-    res.render('index');
+app.get('/', async (req, res) => {
+    try {
+        const snapshots = await loadSnapshots();
+        console.log('Loaded snapshots:', snapshots.length);
+        res.render('index', { snapshots });
+    } catch (error) {
+        console.error('Error loading snapshots:', error);
+        res.render('index', { snapshots: [] });
+    }
 });
 
-// API endpoints
 app.get('/api/tables', async (req, res) => {
     try {
         const tables = await getTables();
@@ -52,7 +54,9 @@ app.post('/api/test-connection', async (req, res) => {
 
 app.post('/api/snapshot', async (req, res) => {
     try {
-        const snapshot = await takeSnapshot();
+        const selectedTables = req.body.tables || [];
+        const snapshot = await takeSnapshot(selectedTables);
+        await saveSnapshot(snapshot);
         res.json({ success: true, snapshot });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -62,11 +66,27 @@ app.post('/api/snapshot', async (req, res) => {
 app.post('/api/compare', async (req, res) => {
     try {
         const { snapshot1, snapshot2 } = req.body;
-        const differences = await compareSnapshots(snapshot1, snapshot2);
+        const differences = compareSnapshots(snapshot1, snapshot2);
         res.json({ success: true, differences });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
+});
+
+app.delete('/api/snapshots/:timestamp', async (req, res) => {
+    try {
+        await deleteSnapshot(req.params.timestamp);
+        const snapshots = await loadSnapshots();
+        res.json({ success: true, snapshots });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log('Client connected');
+    socket.on('disconnect', () => console.log('Client disconnected'));
 });
 
 const PORT = process.env.PORT || 3000;

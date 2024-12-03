@@ -16,18 +16,28 @@ async function getTables() {
         const pool = await sql.connect(config);
         const result = await pool.request().query(`
             SELECT 
-                t.name AS tableName,
-                p.rows AS rowCount,
-                ROUND(SUM(a.total_pages) * 8 / 1024.0, 2) AS totalSpaceMB
+                t.[name] as [table_name],
+                (SELECT SUM(p2.rows) 
+                 FROM sys.partitions p2 
+                 WHERE p2.object_id = t.object_id) as [row_count],
+                CAST(
+                    (SELECT SUM(a2.total_pages) * 8 / 1024.0
+                     FROM sys.indexes i2
+                     JOIN sys.partitions p2 ON i2.object_id = p2.object_id AND i2.index_id = p2.index_id
+                     JOIN sys.allocation_units a2 ON p2.partition_id = a2.container_id
+                     WHERE i2.object_id = t.object_id)
+                AS DECIMAL(10,2)) as [total_space_mb]
             FROM sys.tables t
-            INNER JOIN sys.indexes i ON t.object_id = i.object_id
-            INNER JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
-            INNER JOIN sys.allocation_units a ON p.partition_id = a.container_id
             WHERE t.is_ms_shipped = 0
-            GROUP BY t.name, p.rows
-            ORDER BY t.name
+            ORDER BY t.[name];
         `);
-        return result.recordset;
+
+        // Map the results to match the expected property names
+        return result.recordset.map(record => ({
+            tableName: record.table_name,
+            rowCount: record.row_count || 0,
+            totalSpaceMB: record.total_space_mb || 0
+        }));
     } catch (error) {
         console.error('Error getting tables:', error);
         throw error;
@@ -55,7 +65,7 @@ async function takeSnapshot(selectedTables = []) {
             ORDER BY t.name, c.column_id
         `);
 
-        // Get table data
+        // Get table row counts
         const tables = selectedTables.length ? selectedTables : schema.recordset.reduce((acc, row) => {
             if (!acc.includes(row.TableName)) {
                 acc.push(row.TableName);
@@ -63,14 +73,14 @@ async function takeSnapshot(selectedTables = []) {
             return acc;
         }, []);
 
-        const tableData = {};
+        const tableRowCounts = {};
         let processedTables = 0;
         const totalTables = tables.length;
 
         for (const table of tables) {
             processedTables++;
             const progress = {
-                stage: 'data',
+                stage: 'counting',
                 table,
                 processed: processedTables,
                 total: totalTables,
@@ -79,19 +89,18 @@ async function takeSnapshot(selectedTables = []) {
             
             global.io.emit('snapshot-progress', progress);
             
-            const data = await pool.request()
-                .query(`SELECT * FROM [${table}]`);
-            tableData[table] = data.recordset;
+            const result = await pool.request()
+                .query(`SELECT COUNT(*) as count FROM [${table}]`);
+            tableRowCounts[table] = result.recordset[0].count;
         }
 
         return {
             timestamp: new Date(),
             schema: schema.recordset,
-            data: tableData
+            rowCounts: tableRowCounts
         };
-
     } catch (error) {
-        console.error('Error taking database snapshot:', error);
+        console.error('Error taking snapshot:', error);
         throw error;
     } finally {
         sql.close();

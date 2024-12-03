@@ -1,0 +1,127 @@
+{
+  "timestamp": "2024-12-03T22:08:09.816Z",
+  "schema": [
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "fir",
+      "DataType": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "per",
+      "DataType": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "gj",
+      "DataType": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "kst",
+      "DataType": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "koa",
+      "DataType": "int",
+      "max_length": 4,
+      "is_nullable": false
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "kst_bez",
+      "DataType": "varchar",
+      "max_length": 255,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "kst_hier_elem_id",
+      "DataType": "varchar",
+      "max_length": 32,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "bezeichnung",
+      "DataType": "varchar",
+      "max_length": 255,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "kst_bereich_nr",
+      "DataType": "varchar",
+      "max_length": 30,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "parent_id",
+      "DataType": "varchar",
+      "max_length": 32,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "betrag",
+      "DataType": "decimal",
+      "max_length": 9,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "fix",
+      "DataType": "decimal",
+      "max_length": 9,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "var",
+      "DataType": "decimal",
+      "max_length": 9,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "menge",
+      "DataType": "decimal",
+      "max_length": 9,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "pv",
+      "DataType": "int",
+      "max_length": 4,
+      "is_nullable": true
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "dateCreated",
+      "DataType": "datetime",
+      "max_length": 8,
+      "is_nullable": false
+    },
+    {
+      "TableName": "coplanppv",
+      "ColumnName": "user_name",
+      "DataType": "varchar",
+      "max_length": 30,
+      "is_nullable": false
+    }
+  ],
+  "rowCounts": {
+    "coplanppv": 33071
+  }
+}

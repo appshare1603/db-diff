@@ -3,7 +3,7 @@ const diff = require('deep-diff');
 function compareSnapshots(snapshot1, snapshot2) {
     const differences = {
         schema: [],
-        data: {}
+        rowCounts: {}
     };
 
     // Compare schema
@@ -19,29 +19,22 @@ function compareSnapshots(snapshot1, snapshot2) {
         };
     });
 
-    // Compare data
+    // Compare row counts
     const tables = new Set([
-        ...Object.keys(snapshot1.data),
-        ...Object.keys(snapshot2.data)
+        ...Object.keys(snapshot1.rowCounts),
+        ...Object.keys(snapshot2.rowCounts)
     ]);
 
     for (const table of tables) {
-        const tableDiffs = diff(
-            snapshot1.data[table] || [],
-            snapshot2.data[table] || []
-        ) || [];
+        const count1 = snapshot1.rowCounts[table] || 0;
+        const count2 = snapshot2.rowCounts[table] || 0;
 
-        if (tableDiffs.length > 0) {
-            differences.data[table] = tableDiffs.map(d => {
-                return {
-                    type: d.kind,
-                    path: d.path,
-                    change: {
-                        from: d.lhs,
-                        to: d.rhs
-                    }
-                };
-            });
+        if (count1 !== count2) {
+            differences.rowCounts[table] = {
+                from: count1,
+                to: count2,
+                difference: count2 - count1
+            };
         }
     }
 

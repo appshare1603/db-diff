@@ -34,3 +34,15 @@
     font-family: monospace;
     font-size: 0.9em;
 }
+.table-list .list-group-item {
+    cursor: pointer;
+    user-select: none;
+}
+
+.table-list .text-muted {
+    font-size: 0.875em;
+}
+
+#tableSearch {
+    margin-bottom: 1rem;
+}
