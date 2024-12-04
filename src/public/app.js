@@ -11,6 +11,11 @@ const elements = {
     compareBtn: null,
     tableSelectionModal: null,
     snapshotViewModal: null,
+    sqlQueryModal: null,
+    sqlQuery: null,
+    sqlTextarea: null,
+    executeQuery: null,
+    queryResult: null,
     tableList: null,
     progressBar: null,
     progressDiv: null,
@@ -31,6 +36,11 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.compareBtn = document.getElementById('compareBtn');
     elements.tableSelectionModal = new bootstrap.Modal(document.getElementById('tableSelectionModal'));
     elements.snapshotViewModal = new bootstrap.Modal(document.getElementById('snapshotViewModal'));
+    elements.sqlQueryModal = new bootstrap.Modal(document.getElementById('sqlQueryModal'));
+    elements.sqlQuery = document.getElementById('sqlQuery');
+    elements.sqlTextarea = document.getElementById('sqlTextarea');
+    elements.executeQuery = document.getElementById('executeQuery');
+    elements.queryResult = document.getElementById('queryResult');
     elements.tableList = document.getElementById('tableList');
     elements.progressBar = document.querySelector('.progress-bar');
     elements.progressDiv = document.getElementById('snapshotProgress');
@@ -145,6 +155,20 @@ function initializeUI() {
             } finally {
                 showProgress(false);
             }
+        });
+    }
+
+    // Add SQL Query button handler
+    if (elements.sqlQuery) {
+        elements.sqlQuery.addEventListener('click', () => {
+            elements.sqlQueryModal.show();
+        });
+    }
+
+    // Add Execute Query button handler
+    if (elements.executeQuery) {
+        elements.executeQuery.addEventListener('click', async () => {
+            await executeQuery();
         });
     }
 
@@ -425,4 +449,98 @@ function formatSchemaChange(change) {
         default:
             return `Unknown change type`;
     }
+}
+
+async function executeQuery() {
+    const query = elements.sqlTextarea.value.trim();
+    if (!query) {
+        alert('Please enter a query');
+        return;
+    }
+
+    try {
+        elements.executeQuery.disabled = true;
+        elements.executeQuery.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Executing...';
+
+        const response = await fetch('/api/execute-query', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query })
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to execute query');
+        }
+
+        displayQueryResults(data.result, data.hasMore, data.totalRows);
+    } catch (error) {
+        alert(error.message);
+        elements.queryResult.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+    } finally {
+        elements.executeQuery.disabled = false;
+        elements.executeQuery.textContent = 'Execute Query';
+    }
+}
+
+function displayQueryResults(results, hasMore, totalRows) {
+    if (!elements.queryResult) return;
+
+    const tableResponsive = elements.queryResult.querySelector('.table-responsive');
+    if (!tableResponsive) return;
+
+    if (!results || results.length === 0) {
+        tableResponsive.innerHTML = '<div class="alert alert-info">No results found</div>';
+        return;
+    }
+
+    const columns = Object.keys(results[0]);
+    
+    // Create container for table and message
+    const container = document.createElement('div');
+    
+    // Add result count and warning if there are more rows
+    if (hasMore) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-warning mb-2';
+        //alertDiv.innerHTML = `Showing first 1.000 rows of ${totalRows.toLocaleString()} total rows. Please refine your query to see other results.`;
+        alertDiv.innerHTML = `Showing first 1.000 rows of maybe a lot more rows. Please refine your query to see other results.`;
+        container.appendChild(alertDiv);
+    } else {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-info mb-2';
+        alertDiv.innerHTML = `Found ${results.length.toLocaleString()} rows`;
+        container.appendChild(alertDiv);
+    }
+
+    // Create table
+    const table = document.createElement('table');
+    table.className = 'table table-striped table-hover';
+
+    // Create header
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+        <tr>
+            ${columns.map(col => `<th>${col}</th>`).join('')}
+        </tr>
+    `;
+    table.appendChild(thead);
+
+    // Create body
+    const tbody = document.createElement('tbody');
+    tbody.innerHTML = results.map(row => `
+        <tr>
+            ${columns.map(col => {
+                const value = row[col];
+                return `<td>${value !== null && value !== undefined ? value : ''}</td>`;
+            }).join('')}
+        </tr>
+    `).join('');
+    table.appendChild(tbody);
+
+    container.appendChild(table);
+    tableResponsive.innerHTML = '';
+    tableResponsive.appendChild(container);
 }
