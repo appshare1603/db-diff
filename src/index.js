@@ -152,7 +152,17 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => console.log('Client disconnected'));
 });
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Start server only if not being required by another module (Electron)
+if (require.main === module) {
+    httpServer.listen(process.env.PORT || 3000, () => {
+        console.log(`Server running on port ${process.env.PORT || 3000}`);
+    });
+}
+
+// Export for Electron
+module.exports = new Promise((resolve) => {
+    const server = httpServer.listen(process.env.PORT || 3000, () => {
+        console.log(`Server is running on port ${process.env.PORT || 3000}`);
+        resolve(server);
+    });
 });
