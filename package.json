@@ -2,10 +2,13 @@
   "name": "db-diff-monitor",
   "version": "1.0.0",
   "description": "Database difference monitoring tool for ERP system",
-  "main": "src/index.js",
+  "main": "main.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "start": "electron .",
+    "dev": "nodemon src/index.js",
+    "build": "electron-builder --win",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win"
   },
   "dependencies": {
     "deep-diff": "^1.0.2",
@@ -16,6 +19,42 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
     "nodemon": "^2.0.22"
+  },
+  "build": {
+    "appId": "com.dbdiffmonitor",
+    "productName": "DB Diff Monitor",
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "build/icon.png",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "installerIcon": "build/icon.png",
+      "uninstallerIcon": "build/icon.png",
+      "uninstallDisplayName": "DB Diff Monitor",
+      "license": "license.txt",
+      "createDesktopShortcut": true
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ]
   }
 }

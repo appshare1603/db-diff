@@ -3,36 +3,59 @@ let snapshots = window.initialSnapshots || [];
 let availableTables = [];
 const socket = io();
 
+// UI Elements object - globally accessible
+const elements = {
+    selectTablesBtn: null,
+    testConnectionBtn: null,
+    snapshotProgress: null,
+    compareBtn: null,
+    tableSelectionModal: null,
+    snapshotViewModal: null,
+    sqlQueryModal: null,
+    sqlQuery: null,
+    sqlTextarea: null,
+    executeQuery: null,
+    queryResult: null,
+    tableList: null,
+    progressBar: null,
+    progressDiv: null,
+    progressStatus: null,
+    tableSearch: null,
+    selectAllBtn: null,
+    deselectAllBtn: null,
+    showTableSizes: null,
+    confirmTableSelection: null
+};
+
 // Initialize UI when document is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // UI Elements
-    const elements = {
-        selectTablesBtn: document.getElementById('selectTables'),
-        testConnectionBtn: document.getElementById('testConnection'),
-        snapshotProgress: document.getElementById('snapshotProgress'),
-        compareBtn: document.getElementById('compareBtn'),
-        tableSelectionModal: new bootstrap.Modal(document.getElementById('tableSelectionModal')),
-        snapshotViewModal: new bootstrap.Modal(document.getElementById('snapshotViewModal')),
-        tableList: document.getElementById('tableList'),
-        progressBar: document.querySelector('.progress-bar'),
-        progressDiv: document.getElementById('snapshotProgress'),
-        progressStatus: document.getElementById('progressStatus'),
-        tableSearch: document.getElementById('tableSearch'),
-        selectAllBtn: document.getElementById('selectAll'),
-        deselectAllBtn: document.getElementById('deselectAll'),
-        showTableSizes: document.getElementById('showTableSizes'),
-        confirmTableSelection: document.getElementById('confirmTableSelection')
-    };
-
-    // Initialize progress elements if they exist
-    const progressBar = elements.snapshotProgress?.querySelector('.progress-bar');
-    const progressStatus = document.getElementById('progressStatus');
+    // Initialize UI Elements
+    elements.selectTablesBtn = document.getElementById('selectTables');
+    elements.testConnectionBtn = document.getElementById('testConnection');
+    elements.snapshotProgress = document.getElementById('snapshotProgress');
+    elements.compareBtn = document.getElementById('compareBtn');
+    elements.tableSelectionModal = new bootstrap.Modal(document.getElementById('tableSelectionModal'));
+    elements.snapshotViewModal = new bootstrap.Modal(document.getElementById('snapshotViewModal'));
+    elements.sqlQueryModal = new bootstrap.Modal(document.getElementById('sqlQueryModal'));
+    elements.sqlQuery = document.getElementById('sqlQuery');
+    elements.sqlTextarea = document.getElementById('sqlTextarea');
+    elements.executeQuery = document.getElementById('executeQuery');
+    elements.queryResult = document.getElementById('queryResult');
+    elements.tableList = document.getElementById('tableList');
+    elements.progressBar = document.querySelector('.progress-bar');
+    elements.progressDiv = document.getElementById('snapshotProgress');
+    elements.progressStatus = document.getElementById('progressStatus');
+    elements.tableSearch = document.getElementById('tableSearch');
+    elements.selectAllBtn = document.getElementById('selectAll');
+    elements.deselectAllBtn = document.getElementById('deselectAll');
+    elements.showTableSizes = document.getElementById('showTableSizes');
+    elements.confirmTableSelection = document.getElementById('confirmTableSelection');
 
     // Initialize UI
-    initializeUI(elements);
+    initializeUI();
 });
 
-function initializeUI(elements) {
+function initializeUI() {
     // Update snapshots and load tables
     updateSnapshotSelects();
     loadTables();
@@ -135,6 +158,20 @@ function initializeUI(elements) {
         });
     }
 
+    // Add SQL Query button handler
+    if (elements.sqlQuery) {
+        elements.sqlQuery.addEventListener('click', () => {
+            elements.sqlQueryModal.show();
+        });
+    }
+
+    // Add Execute Query button handler
+    if (elements.executeQuery) {
+        elements.executeQuery.addEventListener('click', async () => {
+            await executeQuery();
+        });
+    }
+
     // Socket event listeners
     socket.on('snapshot-progress', (progress) => {
         if (elements.snapshotProgress && elements.progressBar && elements.progressStatus) {
@@ -160,6 +197,8 @@ async function loadTables() {
 }
 
 function renderTableList() {
+    if (!elements.tableList || !elements.tableSearch || !elements.showTableSizes) return;
+
     const searchTerm = elements.tableSearch.value.toLowerCase();
     const showSizes = elements.showTableSizes.checked;
     
@@ -168,29 +207,31 @@ function renderTableList() {
         .map(table => `
             <label class="list-group-item">
                 <input class="form-check-input me-1" type="checkbox" value="${table.tableName}">
-                <span class="table-name">${table.tableName}</span>
-                ${showSizes ? `
-                    <small class="text-muted ms-2">
-                        (${table.rowCount.toLocaleString()} rows, ${table.totalSpaceMB} MB)
-                    </small>
-                ` : ''}
+                ${table.tableName}
+                ${showSizes ? `<small class="text-muted">(${table.rowCount} rows, ${table.totalSpaceMb} MB)</small>` : ''}
             </label>
-        `).join('');
+        `)
+        .join('');
 }
 
 function getSelectedTables() {
+    if (!elements.tableList) return [];
     return Array.from(elements.tableList.querySelectorAll('input[type="checkbox"]:checked'))
         .map(cb => cb.value);
 }
 
-function updateProgress(progress, snapshotProgress, progressBar, progressStatus) {
-    progressBar.style.width = `${progress.percentage}%`;
-    progressBar.setAttribute('aria-valuenow', progress.percentage);
-    progressBar.textContent = `${progress.percentage}%`;
-    progressStatus.textContent = `Processing table ${progress.processed} of ${progress.total}: ${progress.table}`;
+function updateProgress(progress) {
+    if (!elements.progressBar || !elements.progressStatus) return;
+    
+    elements.progressBar.style.width = `${progress.percentage}%`;
+    elements.progressBar.setAttribute('aria-valuenow', progress.percentage);
+    elements.progressBar.textContent = `${progress.percentage}%`;
+    elements.progressStatus.textContent = progress.message;
 }
 
 function showProgress(show) {
+    if (!elements.progressDiv || !elements.testConnectionBtn) return;
+    
     elements.progressDiv.classList.toggle('d-none', !show);
     elements.testConnectionBtn.disabled = show;
 }
@@ -408,4 +449,98 @@ function formatSchemaChange(change) {
         default:
             return `Unknown change type`;
     }
+}
+
+async function executeQuery() {
+    const query = elements.sqlTextarea.value.trim();
+    if (!query) {
+        alert('Please enter a query');
+        return;
+    }
+
+    try {
+        elements.executeQuery.disabled = true;
+        elements.executeQuery.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Executing...';
+
+        const response = await fetch('/api/execute-query', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query })
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to execute query');
+        }
+
+        displayQueryResults(data.result, data.hasMore, data.totalRows);
+    } catch (error) {
+        alert(error.message);
+        elements.queryResult.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+    } finally {
+        elements.executeQuery.disabled = false;
+        elements.executeQuery.textContent = 'Execute Query';
+    }
+}
+
+function displayQueryResults(results, hasMore, totalRows) {
+    if (!elements.queryResult) return;
+
+    const tableResponsive = elements.queryResult.querySelector('.table-responsive');
+    if (!tableResponsive) return;
+
+    if (!results || results.length === 0) {
+        tableResponsive.innerHTML = '<div class="alert alert-info">No results found</div>';
+        return;
+    }
+
+    const columns = Object.keys(results[0]);
+    
+    // Create container for table and message
+    const container = document.createElement('div');
+    
+    // Add result count and warning if there are more rows
+    if (hasMore) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-warning mb-2';
+        //alertDiv.innerHTML = `Showing first 1.000 rows of ${totalRows.toLocaleString()} total rows. Please refine your query to see other results.`;
+        alertDiv.innerHTML = `Showing first 1.000 rows of maybe a lot more rows. Please refine your query to see other results.`;
+        container.appendChild(alertDiv);
+    } else {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-info mb-2';
+        alertDiv.innerHTML = `Found ${results.length.toLocaleString()} rows`;
+        container.appendChild(alertDiv);
+    }
+
+    // Create table
+    const table = document.createElement('table');
+    table.className = 'table table-striped table-hover';
+
+    // Create header
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+        <tr>
+            ${columns.map(col => `<th>${col}</th>`).join('')}
+        </tr>
+    `;
+    table.appendChild(thead);
+
+    // Create body
+    const tbody = document.createElement('tbody');
+    tbody.innerHTML = results.map(row => `
+        <tr>
+            ${columns.map(col => {
+                const value = row[col];
+                return `<td>${value !== null && value !== undefined ? value : ''}</td>`;
+            }).join('')}
+        </tr>
+    `).join('');
+    table.appendChild(tbody);
+
+    container.appendChild(table);
+    tableResponsive.innerHTML = '';
+    tableResponsive.appendChild(container);
 }

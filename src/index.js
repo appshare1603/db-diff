@@ -6,6 +6,7 @@ const { Server } = require('socket.io');
 const { compareSnapshots } = require('./services/dbCompare');
 const { takeSnapshot, testConnection, getTables } = require('./services/dbSnapshot');
 const { initStorage, saveSnapshot, loadSnapshots, deleteSnapshot } = require('./services/storageService');
+const sql = require('mssql');
 
 const app = express();
 const httpServer = createServer(app);
@@ -73,6 +74,68 @@ app.post('/api/compare', async (req, res) => {
     }
 });
 
+app.post('/api/execute-query', async (req, res) => {
+    try {
+        const { query } = req.body;
+        if (!query) {
+            throw new Error('Query is required');
+        }
+        
+        // Prevent destructive queries
+        const lowerQuery = query.toLowerCase().trim();
+        if (lowerQuery.includes('drop') || 
+            lowerQuery.includes('delete') || 
+            lowerQuery.includes('truncate') || 
+            lowerQuery.includes('update') || 
+            lowerQuery.includes('insert') || 
+            lowerQuery.includes('alter')) {
+            throw new Error('Only SELECT queries are allowed');
+        }
+
+        if (!lowerQuery.startsWith('select')) {
+            throw new Error('Only SELECT queries are allowed');
+        }
+
+        // Modify query to limit rows
+        const ROW_LIMIT = 1001; // Get one extra row to check if there are more
+        let limitedQuery = query;
+        if (!lowerQuery.includes('top') && !lowerQuery.includes('offset')) {
+            // Add TOP clause after SELECT
+            limitedQuery = query.replace(/select\s+/i, `SELECT TOP ${ROW_LIMIT} `);
+        }
+
+        // Use the same config as dbSnapshot.js
+        const config = {
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            server: process.env.DB_SERVER,
+            database: process.env.DB_NAME,
+            options: {
+                encrypt: true,
+                trustServerCertificate: true
+            }
+        };
+
+        const pool = await sql.connect(config);
+        const result = await pool.request().query(limitedQuery);
+        await sql.close();
+
+        const recordset = result.recordset;
+        const hasMore = recordset.length > 1000;
+        const limitedRecordset = recordset.slice(0, 1000); // Only send first 1000 rows
+
+        res.json({ 
+            success: true, 
+            result: limitedRecordset,
+            hasMore: hasMore,
+            totalRows: recordset.length
+        });
+    } catch (error) {
+        console.error('Query execution error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 app.delete('/api/snapshots/:timestamp', async (req, res) => {
     try {
         await deleteSnapshot(req.params.timestamp);
@@ -89,7 +152,17 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => console.log('Client disconnected'));
 });
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Start server only if not being required by another module (Electron)
+if (require.main === module) {
+    httpServer.listen(process.env.PORT || 3000, () => {
+        console.log(`Server running on port ${process.env.PORT || 3000}`);
+    });
+}
+
+// Export for Electron
+module.exports = new Promise((resolve) => {
+    const server = httpServer.listen(process.env.PORT || 3000, () => {
+        console.log(`Server is running on port ${process.env.PORT || 3000}`);
+        resolve(server);
+    });
 });
