@@ -3,36 +3,49 @@ let snapshots = window.initialSnapshots || [];
 let availableTables = [];
 const socket = io();
 
+// UI Elements object - globally accessible
+const elements = {
+    selectTablesBtn: null,
+    testConnectionBtn: null,
+    snapshotProgress: null,
+    compareBtn: null,
+    tableSelectionModal: null,
+    snapshotViewModal: null,
+    tableList: null,
+    progressBar: null,
+    progressDiv: null,
+    progressStatus: null,
+    tableSearch: null,
+    selectAllBtn: null,
+    deselectAllBtn: null,
+    showTableSizes: null,
+    confirmTableSelection: null
+};
+
 // Initialize UI when document is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // UI Elements
-    const elements = {
-        selectTablesBtn: document.getElementById('selectTables'),
-        testConnectionBtn: document.getElementById('testConnection'),
-        snapshotProgress: document.getElementById('snapshotProgress'),
-        compareBtn: document.getElementById('compareBtn'),
-        tableSelectionModal: new bootstrap.Modal(document.getElementById('tableSelectionModal')),
-        snapshotViewModal: new bootstrap.Modal(document.getElementById('snapshotViewModal')),
-        tableList: document.getElementById('tableList'),
-        progressBar: document.querySelector('.progress-bar'),
-        progressDiv: document.getElementById('snapshotProgress'),
-        progressStatus: document.getElementById('progressStatus'),
-        tableSearch: document.getElementById('tableSearch'),
-        selectAllBtn: document.getElementById('selectAll'),
-        deselectAllBtn: document.getElementById('deselectAll'),
-        showTableSizes: document.getElementById('showTableSizes'),
-        confirmTableSelection: document.getElementById('confirmTableSelection')
-    };
-
-    // Initialize progress elements if they exist
-    const progressBar = elements.snapshotProgress?.querySelector('.progress-bar');
-    const progressStatus = document.getElementById('progressStatus');
+    // Initialize UI Elements
+    elements.selectTablesBtn = document.getElementById('selectTables');
+    elements.testConnectionBtn = document.getElementById('testConnection');
+    elements.snapshotProgress = document.getElementById('snapshotProgress');
+    elements.compareBtn = document.getElementById('compareBtn');
+    elements.tableSelectionModal = new bootstrap.Modal(document.getElementById('tableSelectionModal'));
+    elements.snapshotViewModal = new bootstrap.Modal(document.getElementById('snapshotViewModal'));
+    elements.tableList = document.getElementById('tableList');
+    elements.progressBar = document.querySelector('.progress-bar');
+    elements.progressDiv = document.getElementById('snapshotProgress');
+    elements.progressStatus = document.getElementById('progressStatus');
+    elements.tableSearch = document.getElementById('tableSearch');
+    elements.selectAllBtn = document.getElementById('selectAll');
+    elements.deselectAllBtn = document.getElementById('deselectAll');
+    elements.showTableSizes = document.getElementById('showTableSizes');
+    elements.confirmTableSelection = document.getElementById('confirmTableSelection');
 
     // Initialize UI
-    initializeUI(elements);
+    initializeUI();
 });
 
-function initializeUI(elements) {
+function initializeUI() {
     // Update snapshots and load tables
     updateSnapshotSelects();
     loadTables();
@@ -160,6 +173,8 @@ async function loadTables() {
 }
 
 function renderTableList() {
+    if (!elements.tableList || !elements.tableSearch || !elements.showTableSizes) return;
+
     const searchTerm = elements.tableSearch.value.toLowerCase();
     const showSizes = elements.showTableSizes.checked;
     
@@ -168,29 +183,31 @@ function renderTableList() {
         .map(table => `
             <label class="list-group-item">
                 <input class="form-check-input me-1" type="checkbox" value="${table.tableName}">
-                <span class="table-name">${table.tableName}</span>
-                ${showSizes ? `
-                    <small class="text-muted ms-2">
-                        (${table.rowCount.toLocaleString()} rows, ${table.totalSpaceMB} MB)
-                    </small>
-                ` : ''}
+                ${table.tableName}
+                ${showSizes ? `<small class="text-muted">(${table.rowCount} rows, ${table.totalSpaceMb} MB)</small>` : ''}
             </label>
-        `).join('');
+        `)
+        .join('');
 }
 
 function getSelectedTables() {
+    if (!elements.tableList) return [];
     return Array.from(elements.tableList.querySelectorAll('input[type="checkbox"]:checked'))
         .map(cb => cb.value);
 }
 
-function updateProgress(progress, snapshotProgress, progressBar, progressStatus) {
-    progressBar.style.width = `${progress.percentage}%`;
-    progressBar.setAttribute('aria-valuenow', progress.percentage);
-    progressBar.textContent = `${progress.percentage}%`;
-    progressStatus.textContent = `Processing table ${progress.processed} of ${progress.total}: ${progress.table}`;
+function updateProgress(progress) {
+    if (!elements.progressBar || !elements.progressStatus) return;
+    
+    elements.progressBar.style.width = `${progress.percentage}%`;
+    elements.progressBar.setAttribute('aria-valuenow', progress.percentage);
+    elements.progressBar.textContent = `${progress.percentage}%`;
+    elements.progressStatus.textContent = progress.message;
 }
 
 function showProgress(show) {
+    if (!elements.progressDiv || !elements.testConnectionBtn) return;
+    
     elements.progressDiv.classList.toggle('d-none', !show);
     elements.testConnectionBtn.disabled = show;
 }
