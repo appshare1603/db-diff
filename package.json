@@ -6,9 +6,9 @@
   "scripts": {
     "start": "electron .",
     "dev": "nodemon src/index.js",
-    "build": "electron-builder --win",
+    "build": "electron-builder --win --publish never",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win --publish never"
   },
   "dependencies": {
     "deep-diff": "^1.0.2",
@@ -26,21 +26,32 @@
   "build": {
     "appId": "com.dbdiffmonitor",
     "productName": "DB Diff Monitor",
+    "asar": true,
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
       "icon": "build/icon.png",
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "artifactName": "${productName}-${version}-Setup.${ext}"
     },
     "nsis": {
-      "oneClick": true,
-      "installerIcon": "build/icon.png",
-      "uninstallerIcon": "build/icon.png",
-      "uninstallDisplayName": "DB Diff Monitor",
-      "license": "license.txt",
-      "createDesktopShortcut": true
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DB Diff Monitor",
+      "license": "license.txt"
     },
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
     },
     "files": [
       "**/*",
@@ -55,6 +66,14 @@
       "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
       "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "extraResources": [
+      {
+        "from": "./",
+        "filter": [
+          "package.json"
+        ]
+      }
     ]
   }
 }
