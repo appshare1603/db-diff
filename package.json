@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Database difference monitoring tool for ERP system",
   "main": "main.js",
+  "author": "appshare1603",
   "scripts": {
     "start": "electron .",
     "dev": "nodemon src/index.js",
