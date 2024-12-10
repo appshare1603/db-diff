@@ -11,29 +11,32 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
-    
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        
-    - name: Install dependencies
-      run: npm install
+
+    - name: Install Dependencies
+      run: npm ci
 
     - name: Build Electron App (Debugging)
       run: npx electron-builder --dir
+      env:
+        DEBUG: electron-builder
 
-    - name: Build
+    - name: Build Installer
       run: npm run build
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-    - name: Upload artifacts
+
+    - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: windows-exe
         path: |
           dist/*.exe
           dist/win-unpacked/
-        compression-level: 0
+        retention-days: 7
